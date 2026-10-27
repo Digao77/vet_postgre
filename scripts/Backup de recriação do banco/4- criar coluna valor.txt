@@ -1,0 +1,17 @@
+ALTER TABLE contabil.lancamentos
+ADD COLUMN valor NUMERIC(14,2);
+
+
+Isso adiciona uma coluna numérica capaz de armazenar valores monetários com duas casas decimais, como 150.00 ou 30000.00. Ela não terá NOT NULL, porque o gabarito da Prática 03 prevê pelo menos um lançamento com valor = NULL.
+
+veja se deu certo:
+
+SELECT
+    column_name,
+    data_type,
+    numeric_precision,
+    numeric_scale
+FROM information_schema.columns
+WHERE table_schema = 'contabil'
+  AND table_name = 'lancamentos'
+ORDER BY ordinal_position;

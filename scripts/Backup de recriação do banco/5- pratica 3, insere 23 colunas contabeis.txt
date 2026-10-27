@@ -1,0 +1,34 @@
+INSERT INTO contabil.plano_contas
+    (codigo, nome_conta, tipo_conta, natureza_conta)
+VALUES
+    ('1.1.01', 'Caixa', 'ATIVO', 'DEVEDORA'),
+    ('1.1.02', 'Bancos - Conta Movimento', 'ATIVO', 'DEVEDORA'),
+    ('1.1.03', 'Clientes a Receber', 'ATIVO', 'DEVEDORA'),
+    ('1.1.04', 'Estoque de Mercadorias', 'ATIVO', 'DEVEDORA'),
+    ('1.2.01', 'Móveis e Utensílios', 'ATIVO', 'DEVEDORA'),
+    ('1.2.02', 'Veículos', 'ATIVO', 'DEVEDORA'),
+    ('2.1.01', 'Fornecedores a Pagar', 'PASSIVO', 'CREDORA'),
+    ('2.1.02', 'Salários a Pagar', 'PASSIVO', 'CREDORA'),
+    ('2.1.03', 'Impostos a Recolher', 'PASSIVO', 'CREDORA'),
+    ('2.2.01', 'Empréstimos Bancários (LP)', 'PASSIVO', 'CREDORA'),
+    ('3.1.01', 'Capital Social', 'PATRIMONIO_LIQUIDO', 'CREDORA'),
+    ('3.1.02', 'Lucros/Prejuízos Acumulados', 'PATRIMONIO_LIQUIDO', 'CREDORA'),
+    ('4.1.01', 'Receita de Vendas', 'RECEITA', 'CREDORA'),
+    ('4.1.02', 'Receita de Serviços', 'RECEITA', 'CREDORA'),
+    ('5.1.01', 'Custo das Mercadorias Vendidas', 'DESPESA', 'DEVEDORA'),
+    ('5.1.02', 'Despesas com Salários', 'DESPESA', 'DEVEDORA'),
+    ('5.1.03', 'Despesas com Aluguel', 'DESPESA', 'DEVEDORA'),
+    ('5.1.04', 'Despesas com Energia Elétrica', 'DESPESA', 'DEVEDORA'),
+    ('5.1.05', 'Despesas com Água', 'DESPESA', 'DEVEDORA'),
+    ('5.1.06', 'Despesas com Telefone/Internet', 'DESPESA', 'DEVEDORA'),
+    ('5.1.07', 'Despesas Bancárias/Tarifas', 'DESPESA', 'DEVEDORA'),
+    ('5.1.08', 'Despesas com Combustível', 'DESPESA', 'DEVEDORA'),
+    ('5.1.09', 'Despesas Diversas', 'DESPESA', 'DEVEDORA');
+
+
+========================================================================================================
+CONFIRME:
+
+SELECT id, codigo, nome_conta, tipo_conta, natureza_conta
+FROM contabil.plano_contas
+ORDER BY codigo;

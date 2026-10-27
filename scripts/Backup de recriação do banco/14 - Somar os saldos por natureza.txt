@@ -1,0 +1,9 @@
+
+SELECT
+    pc.natureza_conta,
+    SUM(sc.saldo) AS total_saldos
+FROM contabil.plano_contas AS pc
+JOIN contabil.saldo_contas AS sc
+    ON pc.id = sc.conta_id
+GROUP BY pc.natureza_conta
+ORDER BY pc.natureza_conta;

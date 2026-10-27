@@ -1,0 +1,7 @@
+
+CREATE TABLE contabil.saldo_contas (
+    conta_id INT PRIMARY KEY
+        REFERENCES contabil.plano_contas(id),
+    saldo NUMERIC(14,2) NOT NULL DEFAULT 0,
+    data_atualizacao TIMESTAMP NOT NULL DEFAULT NOW()
+);

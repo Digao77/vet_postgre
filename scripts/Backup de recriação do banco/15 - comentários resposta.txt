@@ -1,0 +1,17 @@
+
+-- QUESTÃO 8:
+-- Os totais dos saldos devedores e credores são iguais porque,
+-- pelo método das partidas dobradas, todo lançamento contábil
+-- registra o mesmo valor a débito e a crédito. Assim, a soma
+-- dos saldos de natureza devedora permanece igual à soma dos
+-- saldos de natureza credora, considerando os lançamentos válidos.
+
+-- QUESTÃO 9:
+-- Se um lançamento for excluído ou alterado, os saldos não serão
+-- corrigidos automaticamente pela implementação atual, pois o
+-- trigger foi criado apenas para o evento INSERT.
+-- Para manter os saldos corretos, seria necessário criar triggers
+-- para DELETE e UPDATE, revertendo os efeitos dos dados antigos
+-- e aplicando os efeitos dos dados novos. Outra possibilidade
+-- seria recalcular os saldos a partir de todos os lançamentos
+-- válidos após cada alteração.

@@ -1,0 +1,15 @@
+
+conecta a função à tabela de lançamentos, fazendo com que os saldos sejam atualizados automaticamente a cada novo lançamento inserido.
+
+
+CREATE TRIGGER trg_atualiza_saldo
+AFTER INSERT ON contabil.lancamentos
+FOR EACH ROW
+EXECUTE FUNCTION contabil.fn_atualiza_saldo();
+
+
+
+- AFTER INSERT: executa a função depois que um lançamento é inserido.
+- FOR EACH ROW: executa a função para cada lançamento, mesmo quando vários são inseridos no mesmo comando.
+- EXECUTE FUNCTION: indica qual função será executada.
+A função não recalcula os 53 lançamentos anteriores; ela atuará apenas sobre os novos registros inseridos a partir de agora, como pede o enunciado.

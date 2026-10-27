@@ -1,0 +1,10 @@
+
+SELECT
+    pc.codigo,
+    pc.nome_conta,
+    pc.natureza_conta,
+    sc.saldo
+FROM contabil.plano_contas AS pc
+JOIN contabil.saldo_contas AS sc
+    ON pc.id = sc.conta_id
+ORDER BY pc.codigo;

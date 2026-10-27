@@ -1,0 +1,20 @@
+
+INSERT INTO contabil.saldo_contas (conta_id)
+SELECT id
+FROM contabil.plano_contas;
+
+- SELECT id FROM contabil.plano_contas busca automaticamente os IDs das 23 contas.
+- INSERT INTO ... SELECT insere esses IDs na tabela de saldos.
+- Como não informa saldo nem data_atualizacao, o PostgreSQL aplica os valores padrão: saldo zero e data/hora atual.
+Depois, confira o resultado:
+
+
+SELECT
+    pc.codigo,
+    pc.nome_conta,
+    sc.saldo,
+    sc.data_atualizacao
+FROM contabil.saldo_contas AS sc
+JOIN contabil.plano_contas AS pc
+    ON pc.id = sc.conta_id
+ORDER BY pc.codigo;

@@ -1,0 +1,71 @@
+Conta de natureza DEVEDORA: débito aumenta o saldo; crédito diminui.
+Conta de natureza CREDORA: débito diminui o saldo; crédito aumenta. 
+Se o valor ou uma das contas for NULL, a função não fará uma atualização incorreta. 
+Ao atualizar o saldo, também registrará a data e hora da alteração.
+
+
+CREATE OR REPLACE FUNCTION contabil.fn_atualiza_saldo()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_natureza_debito contabil.natureza_conta_enum;
+    v_natureza_credito contabil.natureza_conta_enum;
+BEGIN
+    -- Se faltar informação, não altera os saldos.
+    IF NEW.conta_debito_id IS NULL
+       OR NEW.conta_credito_id IS NULL
+       OR NEW.valor IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    -- Consulta a natureza da conta debitada.
+    SELECT natureza_conta
+    INTO v_natureza_debito
+    FROM contabil.plano_contas
+    WHERE id = NEW.conta_debito_id;
+
+    -- Consulta a natureza da conta creditada.
+    SELECT natureza_conta
+    INTO v_natureza_credito
+    FROM contabil.plano_contas
+    WHERE id = NEW.conta_credito_id;
+
+    -- Atualiza o saldo da conta debitada.
+    IF v_natureza_debito = 'DEVEDORA' THEN
+        UPDATE contabil.saldo_contas
+        SET saldo = saldo + NEW.valor,
+            data_atualizacao = NOW()
+        WHERE conta_id = NEW.conta_debito_id;
+
+    ELSIF v_natureza_debito = 'CREDORA' THEN
+        UPDATE contabil.saldo_contas
+        SET saldo = saldo - NEW.valor,
+            data_atualizacao = NOW()
+        WHERE conta_id = NEW.conta_debito_id;
+    END IF;
+
+    -- Atualiza o saldo da conta creditada.
+    IF v_natureza_credito = 'DEVEDORA' THEN
+        UPDATE contabil.saldo_contas
+        SET saldo = saldo - NEW.valor,
+            data_atualizacao = NOW()
+        WHERE conta_id = NEW.conta_credito_id;
+
+    ELSIF v_natureza_credito = 'CREDORA' THEN
+        UPDATE contabil.saldo_contas
+        SET saldo = saldo + NEW.valor,
+            data_atualizacao = NOW()
+        WHERE conta_id = NEW.conta_credito_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+
+
+
+
+

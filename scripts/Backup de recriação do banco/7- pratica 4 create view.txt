@@ -1,0 +1,27 @@
+CREATE OR REPLACE VIEW contabil.vw_lancamentos AS
+SELECT
+    l.data_lancamento,
+    l.historico,
+    pd.nome_conta AS conta_debito,
+    pc.nome_conta AS conta_credito,
+    l.valor
+FROM contabil.lancamentos AS l
+LEFT JOIN contabil.plano_contas AS pd
+    ON l.conta_debito_id = pd.id
+LEFT JOIN contabil.plano_contas AS pc
+    ON l.conta_credito_id = pc.id;
+
+
+===================================================================
+O que esse código faz?
+- CREATE OR REPLACE VIEW: cria a visualização ou substitui uma versão anterior dela.
+- l: apelido da tabela lancamentos.
+- pd: apelido de plano_contas para localizar a conta de débito.
+- pc: outro apelido de plano_contas, agora para localizar a conta de crédito.
+- LEFT JOIN: associa os lançamentos aos nomes das contas, preservando os registros mesmo que alguma associação esteja ausente.
+=================================================================================================================================
+
+faça o teste
+SELECT *
+FROM contabil.vw_lancamentos
+ORDER BY data_lancamento;

@@ -1,0 +1,1597 @@
+--
+-- PostgreSQL database dump
+--
+
+\restrict cniuSX4Pcbg6cVyOTt5v1nYzOe3RYhmDLdCxR0FgjZRAJHdpRHRrSAQsiggb9Qz
+
+-- Dumped from database version 18.6
+-- Dumped by pg_dump version 18.6
+
+-- Started on 2026-10-26 22:30:12
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- TOC entry 7 (class 2615 OID 18148)
+-- Name: adm; Type: SCHEMA; Schema: -; Owner: postgres
+--
+
+CREATE SCHEMA adm;
+
+
+ALTER SCHEMA adm OWNER TO postgres;
+
+--
+-- TOC entry 8 (class 2615 OID 18235)
+-- Name: contabil; Type: SCHEMA; Schema: -; Owner: postgres
+--
+
+CREATE SCHEMA contabil;
+
+
+ALTER SCHEMA contabil OWNER TO postgres;
+
+--
+-- TOC entry 6 (class 2615 OID 18024)
+-- Name: site; Type: SCHEMA; Schema: -; Owner: postgres
+--
+
+CREATE SCHEMA site;
+
+
+ALTER SCHEMA site OWNER TO postgres;
+
+--
+-- TOC entry 935 (class 1247 OID 18272)
+-- Name: natureza_conta_enum; Type: TYPE; Schema: contabil; Owner: postgres
+--
+
+CREATE TYPE contabil.natureza_conta_enum AS ENUM (
+    'DEVEDORA',
+    'CREDORA'
+);
+
+
+ALTER TYPE contabil.natureza_conta_enum OWNER TO postgres;
+
+--
+-- TOC entry 932 (class 1247 OID 18261)
+-- Name: tipo_conta_enum; Type: TYPE; Schema: contabil; Owner: postgres
+--
+
+CREATE TYPE contabil.tipo_conta_enum AS ENUM (
+    'ATIVO',
+    'PASSIVO',
+    'PATRIMONIO_LIQUIDO',
+    'RECEITA',
+    'DESPESA'
+);
+
+
+ALTER TYPE contabil.tipo_conta_enum OWNER TO postgres;
+
+--
+-- TOC entry 265 (class 1255 OID 18337)
+-- Name: fn_atualiza_saldo(); Type: FUNCTION; Schema: contabil; Owner: postgres
+--
+
+CREATE FUNCTION contabil.fn_atualiza_saldo() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    v_natureza_debito contabil.natureza_conta_enum;
+    v_natureza_credito contabil.natureza_conta_enum;
+BEGIN
+    -- Se faltar informação, não altera os saldos.
+    IF NEW.conta_debito_id IS NULL
+       OR NEW.conta_credito_id IS NULL
+       OR NEW.valor IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    -- Consulta a natureza da conta debitada.
+    SELECT natureza_conta
+    INTO v_natureza_debito
+    FROM contabil.plano_contas
+    WHERE id = NEW.conta_debito_id;
+
+    -- Consulta a natureza da conta creditada.
+    SELECT natureza_conta
+    INTO v_natureza_credito
+    FROM contabil.plano_contas
+    WHERE id = NEW.conta_credito_id;
+
+    -- Atualiza o saldo da conta debitada.
+    IF v_natureza_debito = 'DEVEDORA' THEN
+        UPDATE contabil.saldo_contas
+        SET saldo = saldo + NEW.valor,
+            data_atualizacao = NOW()
+        WHERE conta_id = NEW.conta_debito_id;
+
+    ELSIF v_natureza_debito = 'CREDORA' THEN
+        UPDATE contabil.saldo_contas
+        SET saldo = saldo - NEW.valor,
+            data_atualizacao = NOW()
+        WHERE conta_id = NEW.conta_debito_id;
+    END IF;
+
+    -- Atualiza o saldo da conta creditada.
+    IF v_natureza_credito = 'DEVEDORA' THEN
+        UPDATE contabil.saldo_contas
+        SET saldo = saldo - NEW.valor,
+            data_atualizacao = NOW()
+        WHERE conta_id = NEW.conta_credito_id;
+
+    ELSIF v_natureza_credito = 'CREDORA' THEN
+        UPDATE contabil.saldo_contas
+        SET saldo = saldo + NEW.valor,
+            data_atualizacao = NOW()
+        WHERE conta_id = NEW.conta_credito_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION contabil.fn_atualiza_saldo() OWNER TO postgres;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- TOC entry 241 (class 1259 OID 18162)
+-- Name: estoque; Type: TABLE; Schema: adm; Owner: postgres
+--
+
+CREATE TABLE adm.estoque (
+    id_estoque integer NOT NULL,
+    id_produto_fk integer NOT NULL
+);
+
+
+ALTER TABLE adm.estoque OWNER TO postgres;
+
+--
+-- TOC entry 240 (class 1259 OID 18161)
+-- Name: estoque_id_estoque_seq; Type: SEQUENCE; Schema: adm; Owner: postgres
+--
+
+CREATE SEQUENCE adm.estoque_id_estoque_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE adm.estoque_id_estoque_seq OWNER TO postgres;
+
+--
+-- TOC entry 5110 (class 0 OID 0)
+-- Dependencies: 240
+-- Name: estoque_id_estoque_seq; Type: SEQUENCE OWNED BY; Schema: adm; Owner: postgres
+--
+
+ALTER SEQUENCE adm.estoque_id_estoque_seq OWNED BY adm.estoque.id_estoque;
+
+
+--
+-- TOC entry 239 (class 1259 OID 18150)
+-- Name: funcionarios; Type: TABLE; Schema: adm; Owner: postgres
+--
+
+CREATE TABLE adm.funcionarios (
+    id_funcionario integer NOT NULL,
+    nome character varying(20) NOT NULL,
+    setor character varying(20) NOT NULL,
+    salario character varying(10) NOT NULL,
+    beneficio character varying(255) DEFAULT NULL::character varying
+);
+
+
+ALTER TABLE adm.funcionarios OWNER TO postgres;
+
+--
+-- TOC entry 238 (class 1259 OID 18149)
+-- Name: funcionarios_id_funcionario_seq; Type: SEQUENCE; Schema: adm; Owner: postgres
+--
+
+CREATE SEQUENCE adm.funcionarios_id_funcionario_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE adm.funcionarios_id_funcionario_seq OWNER TO postgres;
+
+--
+-- TOC entry 5111 (class 0 OID 0)
+-- Dependencies: 238
+-- Name: funcionarios_id_funcionario_seq; Type: SEQUENCE OWNED BY; Schema: adm; Owner: postgres
+--
+
+ALTER SEQUENCE adm.funcionarios_id_funcionario_seq OWNED BY adm.funcionarios.id_funcionario;
+
+
+--
+-- TOC entry 243 (class 1259 OID 18181)
+-- Name: historico; Type: TABLE; Schema: adm; Owner: postgres
+--
+
+CREATE TABLE adm.historico (
+    id_historico integer NOT NULL,
+    data timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    id_servico_fk integer NOT NULL,
+    id_cliente_fk integer NOT NULL,
+    id_pet_fk integer NOT NULL,
+    id_produto_fk integer NOT NULL,
+    id_pedido_fk integer NOT NULL,
+    id_funcionario_fk integer NOT NULL
+);
+
+
+ALTER TABLE adm.historico OWNER TO postgres;
+
+--
+-- TOC entry 242 (class 1259 OID 18180)
+-- Name: historico_id_historico_seq; Type: SEQUENCE; Schema: adm; Owner: postgres
+--
+
+CREATE SEQUENCE adm.historico_id_historico_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE adm.historico_id_historico_seq OWNER TO postgres;
+
+--
+-- TOC entry 5112 (class 0 OID 0)
+-- Dependencies: 242
+-- Name: historico_id_historico_seq; Type: SEQUENCE OWNED BY; Schema: adm; Owner: postgres
+--
+
+ALTER SEQUENCE adm.historico_id_historico_seq OWNED BY adm.historico.id_historico;
+
+
+--
+-- TOC entry 225 (class 1259 OID 18037)
+-- Name: tutor_cliente; Type: TABLE; Schema: site; Owner: postgres
+--
+
+CREATE TABLE site.tutor_cliente (
+    id_cliente integer NOT NULL,
+    nome character varying(50) NOT NULL,
+    cpf character varying(20) NOT NULL,
+    telefone character varying(20) NOT NULL,
+    endereco character varying(100) NOT NULL
+);
+
+
+ALTER TABLE site.tutor_cliente OWNER TO postgres;
+
+--
+-- TOC entry 244 (class 1259 OID 18226)
+-- Name: lista_clientes; Type: VIEW; Schema: adm; Owner: postgres
+--
+
+CREATE VIEW adm.lista_clientes AS
+ SELECT id_cliente,
+    nome,
+    cpf,
+    telefone,
+    endereco
+   FROM site.tutor_cliente;
+
+
+ALTER VIEW adm.lista_clientes OWNER TO postgres;
+
+--
+-- TOC entry 245 (class 1259 OID 18230)
+-- Name: relatorio_funcionarios; Type: VIEW; Schema: adm; Owner: postgres
+--
+
+CREATE VIEW adm.relatorio_funcionarios AS
+ SELECT id_funcionario,
+    nome,
+    setor,
+    salario,
+    beneficio
+   FROM adm.funcionarios;
+
+
+ALTER VIEW adm.relatorio_funcionarios OWNER TO postgres;
+
+--
+-- TOC entry 251 (class 1259 OID 18291)
+-- Name: lancamentos; Type: TABLE; Schema: contabil; Owner: postgres
+--
+
+CREATE TABLE contabil.lancamentos (
+    id integer NOT NULL,
+    data_lancamento date NOT NULL,
+    historico character varying(255),
+    conta_debito_id integer,
+    conta_credito_id integer,
+    valor numeric(14,2),
+    CONSTRAINT chk_lancamentos_valor_positivo CHECK ((valor > (0)::numeric))
+);
+
+
+ALTER TABLE contabil.lancamentos OWNER TO postgres;
+
+--
+-- TOC entry 250 (class 1259 OID 18290)
+-- Name: lancamentos_id_seq; Type: SEQUENCE; Schema: contabil; Owner: postgres
+--
+
+CREATE SEQUENCE contabil.lancamentos_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE contabil.lancamentos_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5113 (class 0 OID 0)
+-- Dependencies: 250
+-- Name: lancamentos_id_seq; Type: SEQUENCE OWNED BY; Schema: contabil; Owner: postgres
+--
+
+ALTER SEQUENCE contabil.lancamentos_id_seq OWNED BY contabil.lancamentos.id;
+
+
+--
+-- TOC entry 247 (class 1259 OID 18237)
+-- Name: pagamento; Type: TABLE; Schema: contabil; Owner: postgres
+--
+
+CREATE TABLE contabil.pagamento (
+    id_pagamento integer NOT NULL,
+    valor character varying(10) NOT NULL,
+    forma_pagamento character varying(20) NOT NULL,
+    data timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    id_servico_fk integer NOT NULL,
+    id_pedido_fk integer NOT NULL
+);
+
+
+ALTER TABLE contabil.pagamento OWNER TO postgres;
+
+--
+-- TOC entry 246 (class 1259 OID 18236)
+-- Name: pagamento_id_pagamento_seq; Type: SEQUENCE; Schema: contabil; Owner: postgres
+--
+
+CREATE SEQUENCE contabil.pagamento_id_pagamento_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE contabil.pagamento_id_pagamento_seq OWNER TO postgres;
+
+--
+-- TOC entry 5114 (class 0 OID 0)
+-- Dependencies: 246
+-- Name: pagamento_id_pagamento_seq; Type: SEQUENCE OWNED BY; Schema: contabil; Owner: postgres
+--
+
+ALTER SEQUENCE contabil.pagamento_id_pagamento_seq OWNED BY contabil.pagamento.id_pagamento;
+
+
+--
+-- TOC entry 249 (class 1259 OID 18278)
+-- Name: plano_contas; Type: TABLE; Schema: contabil; Owner: postgres
+--
+
+CREATE TABLE contabil.plano_contas (
+    id integer NOT NULL,
+    codigo character varying(40) NOT NULL,
+    nome_conta character varying(255) NOT NULL,
+    tipo_conta contabil.tipo_conta_enum NOT NULL,
+    natureza_conta contabil.natureza_conta_enum DEFAULT 'DEVEDORA'::contabil.natureza_conta_enum NOT NULL
+);
+
+
+ALTER TABLE contabil.plano_contas OWNER TO postgres;
+
+--
+-- TOC entry 248 (class 1259 OID 18277)
+-- Name: plano_contas_id_seq; Type: SEQUENCE; Schema: contabil; Owner: postgres
+--
+
+CREATE SEQUENCE contabil.plano_contas_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE contabil.plano_contas_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5115 (class 0 OID 0)
+-- Dependencies: 248
+-- Name: plano_contas_id_seq; Type: SEQUENCE OWNED BY; Schema: contabil; Owner: postgres
+--
+
+ALTER SEQUENCE contabil.plano_contas_id_seq OWNED BY contabil.plano_contas.id;
+
+
+--
+-- TOC entry 253 (class 1259 OID 18322)
+-- Name: saldo_contas; Type: TABLE; Schema: contabil; Owner: postgres
+--
+
+CREATE TABLE contabil.saldo_contas (
+    conta_id integer NOT NULL,
+    saldo numeric(14,2) DEFAULT 0 NOT NULL,
+    data_atualizacao timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE contabil.saldo_contas OWNER TO postgres;
+
+--
+-- TOC entry 252 (class 1259 OID 18318)
+-- Name: vw_lancamentos; Type: VIEW; Schema: contabil; Owner: postgres
+--
+
+CREATE VIEW contabil.vw_lancamentos AS
+ SELECT l.data_lancamento,
+    l.historico,
+    pd.nome_conta AS conta_debito,
+    pc.nome_conta AS conta_credito,
+    l.valor
+   FROM ((contabil.lancamentos l
+     LEFT JOIN contabil.plano_contas pd ON ((l.conta_debito_id = pd.id)))
+     LEFT JOIN contabil.plano_contas pc ON ((l.conta_credito_id = pc.id)));
+
+
+ALTER VIEW contabil.vw_lancamentos OWNER TO postgres;
+
+--
+-- TOC entry 231 (class 1259 OID 18078)
+-- Name: carrinho; Type: TABLE; Schema: site; Owner: postgres
+--
+
+CREATE TABLE site.carrinho (
+    id_carrinho integer NOT NULL,
+    id_produto_fk integer NOT NULL,
+    id_estoque_fk integer NOT NULL,
+    id_cliente_fk integer NOT NULL
+);
+
+
+ALTER TABLE site.carrinho OWNER TO postgres;
+
+--
+-- TOC entry 230 (class 1259 OID 18077)
+-- Name: carrinho_id_carrinho_seq; Type: SEQUENCE; Schema: site; Owner: postgres
+--
+
+CREATE SEQUENCE site.carrinho_id_carrinho_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE site.carrinho_id_carrinho_seq OWNER TO postgres;
+
+--
+-- TOC entry 5116 (class 0 OID 0)
+-- Dependencies: 230
+-- Name: carrinho_id_carrinho_seq; Type: SEQUENCE OWNED BY; Schema: site; Owner: postgres
+--
+
+ALTER SEQUENCE site.carrinho_id_carrinho_seq OWNED BY site.carrinho.id_carrinho;
+
+
+--
+-- TOC entry 227 (class 1259 OID 18049)
+-- Name: pet; Type: TABLE; Schema: site; Owner: postgres
+--
+
+CREATE TABLE site.pet (
+    id_pet integer NOT NULL,
+    nome character varying(20) DEFAULT NULL::character varying,
+    idade integer,
+    peso integer,
+    especie character varying(20) NOT NULL,
+    raca character varying(20) DEFAULT NULL::character varying,
+    id_cliente_fk integer NOT NULL,
+    CONSTRAINT chk_pet_idade CHECK ((idade >= 0)),
+    CONSTRAINT chk_pet_peso CHECK ((peso > 0))
+);
+
+
+ALTER TABLE site.pet OWNER TO postgres;
+
+--
+-- TOC entry 236 (class 1259 OID 18137)
+-- Name: clientes_pets; Type: VIEW; Schema: site; Owner: postgres
+--
+
+CREATE VIEW site.clientes_pets AS
+ SELECT tc.nome AS cliente,
+    p.nome AS pet,
+    p.idade,
+    p.especie,
+    p.raca
+   FROM (site.tutor_cliente tc
+     JOIN site.pet p ON ((tc.id_cliente = p.id_cliente_fk)));
+
+
+ALTER VIEW site.clientes_pets OWNER TO postgres;
+
+--
+-- TOC entry 233 (class 1259 OID 18099)
+-- Name: pedido; Type: TABLE; Schema: site; Owner: postgres
+--
+
+CREATE TABLE site.pedido (
+    id_pedido integer NOT NULL,
+    status character varying(20) NOT NULL,
+    id_carrinho_fk integer NOT NULL,
+    CONSTRAINT chk_pedido_status CHECK (((status)::text = ANY ((ARRAY['pendente'::character varying, 'pago'::character varying, 'cancelado'::character varying, 'concluido'::character varying])::text[])))
+);
+
+
+ALTER TABLE site.pedido OWNER TO postgres;
+
+--
+-- TOC entry 232 (class 1259 OID 18098)
+-- Name: pedido_id_pedido_seq; Type: SEQUENCE; Schema: site; Owner: postgres
+--
+
+CREATE SEQUENCE site.pedido_id_pedido_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE site.pedido_id_pedido_seq OWNER TO postgres;
+
+--
+-- TOC entry 5117 (class 0 OID 0)
+-- Dependencies: 232
+-- Name: pedido_id_pedido_seq; Type: SEQUENCE OWNED BY; Schema: site; Owner: postgres
+--
+
+ALTER SEQUENCE site.pedido_id_pedido_seq OWNED BY site.pedido.id_pedido;
+
+
+--
+-- TOC entry 226 (class 1259 OID 18048)
+-- Name: pet_id_pet_seq; Type: SEQUENCE; Schema: site; Owner: postgres
+--
+
+CREATE SEQUENCE site.pet_id_pet_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE site.pet_id_pet_seq OWNER TO postgres;
+
+--
+-- TOC entry 5118 (class 0 OID 0)
+-- Dependencies: 226
+-- Name: pet_id_pet_seq; Type: SEQUENCE OWNED BY; Schema: site; Owner: postgres
+--
+
+ALTER SEQUENCE site.pet_id_pet_seq OWNED BY site.pet.id_pet;
+
+
+--
+-- TOC entry 229 (class 1259 OID 18066)
+-- Name: produto; Type: TABLE; Schema: site; Owner: postgres
+--
+
+CREATE TABLE site.produto (
+    id_produto integer NOT NULL,
+    nome character varying(50) NOT NULL,
+    tipo character varying(20) NOT NULL,
+    variacao character varying(20) NOT NULL,
+    valor character varying(10) NOT NULL
+);
+
+
+ALTER TABLE site.produto OWNER TO postgres;
+
+--
+-- TOC entry 237 (class 1259 OID 18141)
+-- Name: produto_catalogo; Type: VIEW; Schema: site; Owner: postgres
+--
+
+CREATE VIEW site.produto_catalogo AS
+ SELECT nome,
+    valor
+   FROM site.produto;
+
+
+ALTER VIEW site.produto_catalogo OWNER TO postgres;
+
+--
+-- TOC entry 228 (class 1259 OID 18065)
+-- Name: produto_id_produto_seq; Type: SEQUENCE; Schema: site; Owner: postgres
+--
+
+CREATE SEQUENCE site.produto_id_produto_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE site.produto_id_produto_seq OWNER TO postgres;
+
+--
+-- TOC entry 5119 (class 0 OID 0)
+-- Dependencies: 228
+-- Name: produto_id_produto_seq; Type: SEQUENCE OWNED BY; Schema: site; Owner: postgres
+--
+
+ALTER SEQUENCE site.produto_id_produto_seq OWNED BY site.produto.id_produto;
+
+
+--
+-- TOC entry 235 (class 1259 OID 18114)
+-- Name: servico; Type: TABLE; Schema: site; Owner: postgres
+--
+
+CREATE TABLE site.servico (
+    id_servico integer NOT NULL,
+    tipo character varying(20) NOT NULL,
+    valor character varying(10) NOT NULL,
+    data timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    id_cliente_fk integer NOT NULL,
+    id_pet_fk integer NOT NULL
+);
+
+
+ALTER TABLE site.servico OWNER TO postgres;
+
+--
+-- TOC entry 234 (class 1259 OID 18113)
+-- Name: servico_id_servico_seq; Type: SEQUENCE; Schema: site; Owner: postgres
+--
+
+CREATE SEQUENCE site.servico_id_servico_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE site.servico_id_servico_seq OWNER TO postgres;
+
+--
+-- TOC entry 5120 (class 0 OID 0)
+-- Dependencies: 234
+-- Name: servico_id_servico_seq; Type: SEQUENCE OWNED BY; Schema: site; Owner: postgres
+--
+
+ALTER SEQUENCE site.servico_id_servico_seq OWNED BY site.servico.id_servico;
+
+
+--
+-- TOC entry 224 (class 1259 OID 18036)
+-- Name: tutor_cliente_id_cliente_seq; Type: SEQUENCE; Schema: site; Owner: postgres
+--
+
+CREATE SEQUENCE site.tutor_cliente_id_cliente_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE site.tutor_cliente_id_cliente_seq OWNER TO postgres;
+
+--
+-- TOC entry 5121 (class 0 OID 0)
+-- Dependencies: 224
+-- Name: tutor_cliente_id_cliente_seq; Type: SEQUENCE OWNED BY; Schema: site; Owner: postgres
+--
+
+ALTER SEQUENCE site.tutor_cliente_id_cliente_seq OWNED BY site.tutor_cliente.id_cliente;
+
+
+--
+-- TOC entry 223 (class 1259 OID 18026)
+-- Name: usuarios; Type: TABLE; Schema: site; Owner: postgres
+--
+
+CREATE TABLE site.usuarios (
+    id integer NOT NULL,
+    nome character varying(100) DEFAULT NULL::character varying,
+    email character varying(100) DEFAULT NULL::character varying,
+    senha character varying(255) DEFAULT NULL::character varying
+);
+
+
+ALTER TABLE site.usuarios OWNER TO postgres;
+
+--
+-- TOC entry 222 (class 1259 OID 18025)
+-- Name: usuarios_id_seq; Type: SEQUENCE; Schema: site; Owner: postgres
+--
+
+CREATE SEQUENCE site.usuarios_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE site.usuarios_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 5122 (class 0 OID 0)
+-- Dependencies: 222
+-- Name: usuarios_id_seq; Type: SEQUENCE OWNED BY; Schema: site; Owner: postgres
+--
+
+ALTER SEQUENCE site.usuarios_id_seq OWNED BY site.usuarios.id;
+
+
+--
+-- TOC entry 4864 (class 2604 OID 18165)
+-- Name: estoque id_estoque; Type: DEFAULT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.estoque ALTER COLUMN id_estoque SET DEFAULT nextval('adm.estoque_id_estoque_seq'::regclass);
+
+
+--
+-- TOC entry 4862 (class 2604 OID 18153)
+-- Name: funcionarios id_funcionario; Type: DEFAULT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.funcionarios ALTER COLUMN id_funcionario SET DEFAULT nextval('adm.funcionarios_id_funcionario_seq'::regclass);
+
+
+--
+-- TOC entry 4865 (class 2604 OID 18184)
+-- Name: historico id_historico; Type: DEFAULT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.historico ALTER COLUMN id_historico SET DEFAULT nextval('adm.historico_id_historico_seq'::regclass);
+
+
+--
+-- TOC entry 4871 (class 2604 OID 18294)
+-- Name: lancamentos id; Type: DEFAULT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.lancamentos ALTER COLUMN id SET DEFAULT nextval('contabil.lancamentos_id_seq'::regclass);
+
+
+--
+-- TOC entry 4867 (class 2604 OID 18240)
+-- Name: pagamento id_pagamento; Type: DEFAULT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.pagamento ALTER COLUMN id_pagamento SET DEFAULT nextval('contabil.pagamento_id_pagamento_seq'::regclass);
+
+
+--
+-- TOC entry 4869 (class 2604 OID 18281)
+-- Name: plano_contas id; Type: DEFAULT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.plano_contas ALTER COLUMN id SET DEFAULT nextval('contabil.plano_contas_id_seq'::regclass);
+
+
+--
+-- TOC entry 4858 (class 2604 OID 18081)
+-- Name: carrinho id_carrinho; Type: DEFAULT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.carrinho ALTER COLUMN id_carrinho SET DEFAULT nextval('site.carrinho_id_carrinho_seq'::regclass);
+
+
+--
+-- TOC entry 4859 (class 2604 OID 18102)
+-- Name: pedido id_pedido; Type: DEFAULT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.pedido ALTER COLUMN id_pedido SET DEFAULT nextval('site.pedido_id_pedido_seq'::regclass);
+
+
+--
+-- TOC entry 4854 (class 2604 OID 18052)
+-- Name: pet id_pet; Type: DEFAULT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.pet ALTER COLUMN id_pet SET DEFAULT nextval('site.pet_id_pet_seq'::regclass);
+
+
+--
+-- TOC entry 4857 (class 2604 OID 18069)
+-- Name: produto id_produto; Type: DEFAULT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.produto ALTER COLUMN id_produto SET DEFAULT nextval('site.produto_id_produto_seq'::regclass);
+
+
+--
+-- TOC entry 4860 (class 2604 OID 18117)
+-- Name: servico id_servico; Type: DEFAULT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.servico ALTER COLUMN id_servico SET DEFAULT nextval('site.servico_id_servico_seq'::regclass);
+
+
+--
+-- TOC entry 4853 (class 2604 OID 18040)
+-- Name: tutor_cliente id_cliente; Type: DEFAULT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.tutor_cliente ALTER COLUMN id_cliente SET DEFAULT nextval('site.tutor_cliente_id_cliente_seq'::regclass);
+
+
+--
+-- TOC entry 4849 (class 2604 OID 18029)
+-- Name: usuarios id; Type: DEFAULT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.usuarios ALTER COLUMN id SET DEFAULT nextval('site.usuarios_id_seq'::regclass);
+
+
+--
+-- TOC entry 5095 (class 0 OID 18162)
+-- Dependencies: 241
+-- Data for Name: estoque; Type: TABLE DATA; Schema: adm; Owner: postgres
+--
+
+COPY adm.estoque (id_estoque, id_produto_fk) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5093 (class 0 OID 18150)
+-- Dependencies: 239
+-- Data for Name: funcionarios; Type: TABLE DATA; Schema: adm; Owner: postgres
+--
+
+COPY adm.funcionarios (id_funcionario, nome, setor, salario, beneficio) FROM stdin;
+1	Ana Carolina	Administrativo	2500.00	Vale transporte
+2	Bruno Henrique	Atendimento	2200.00	Vale alimentação
+3	Juliana Martins	Financeiro	2800.00	Vale alimentação
+4	Rafael Souza	Estoque	2100.00	Vale transporte
+\.
+
+
+--
+-- TOC entry 5097 (class 0 OID 18181)
+-- Dependencies: 243
+-- Data for Name: historico; Type: TABLE DATA; Schema: adm; Owner: postgres
+--
+
+COPY adm.historico (id_historico, data, id_servico_fk, id_cliente_fk, id_pet_fk, id_produto_fk, id_pedido_fk, id_funcionario_fk) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5103 (class 0 OID 18291)
+-- Dependencies: 251
+-- Data for Name: lancamentos; Type: TABLE DATA; Schema: contabil; Owner: postgres
+--
+
+COPY contabil.lancamentos (id, data_lancamento, historico, conta_debito_id, conta_credito_id, valor) FROM stdin;
+1	2026-03-01	Aporte de capital dos sócios	2	11	50000.00
+2	2026-03-02	Compra de mercadorias para revenda, a prazo	4	7	18000.00
+3	2026-03-03	Pagamento de aluguel do mês	17	1	3200.00
+4	2026-03-03	Venda de mercadorias à vista	1	13	4500.00
+5	2026-03-03	Baixa do custo da mercadoria vendida	15	4	2700.00
+6	2026-03-04	Venda de mercadorias a prazo	3	13	6200.00
+7	2026-03-04	Baixa do CMV da venda a prazo	15	4	3720.00
+8	2026-03-05	Compra de mercadorias à vista	4	2	9000.00
+9	2026-03-05	Pagamento de conta de energia elétrica	18	2	850.00
+10	2026-03-06	Recebimento de cliente (venda dia 04)	2	3	6200.00
+11	2026-03-07	Pagamento a fornecedor	7	2	9000.00
+12	2026-03-08	Venda de mercadorias à vista	1	13	5100.00
+13	2026-03-08	Baixa do CMV	15	4	3060.00
+14	2026-03-09	Pagamento de salários	16	2	7500.00
+15	2026-03-09	Retenção de INSS/FGTS sobre a folha	16	9	1650.00
+16	2026-03-10	Pagamento de telefone e internet	20	2	320.00
+17	2026-03-10	Compra de mercadorias a prazo	4	7	14500.00
+18	2026-03-11	Venda de mercadorias a prazo	3	13	8300.00
+19	2026-03-11	Baixa do CMV	15	4	4980.00
+20	2026-03-12	Pagamento de tarifas bancárias	21	2	95.00
+21	2026-03-12	Combustível para entregas	22	1	410.00
+22	2026-03-13	Recebimento de cliente	2	3	8300.00
+23	2026-03-14	Venda de mercadorias à vista	1	13	3900.00
+24	2026-03-14	Baixa do CMV	15	4	2340.00
+25	2026-03-15	Pagamento de água	19	2	210.00
+26	2026-03-15	Empréstimo bancário recebido	2	10	20000.00
+27	2026-03-16	Compra de veículo para entregas, à vista	6	2	22000.00
+28	2026-03-16	Compra de mercadorias a prazo	4	7	11200.00
+29	2026-03-17	Venda de mercadorias a prazo	3	13	7400.00
+30	2026-03-17	Baixa do CMV	15	4	4440.00
+31	2026-03-18	Pagamento a fornecedores	7	2	14500.00
+32	2026-03-18	Prestação de serviço de instalação	2	14	1800.00
+33	2026-03-19	Venda de mercadorias à vista	1	13	4700.00
+34	2026-03-19	Baixa do CMV	15	4	2820.00
+35	2026-03-20	Pagamento de parcela do empréstimo	10	2	2000.00
+36	2026-03-20	Material de escritório	23	1	180.00
+37	2026-03-21	Recebimento de cliente	2	3	7400.00
+38	2026-03-21	Venda de mercadorias a prazo	3	13	5600.00
+39	2026-03-21	Baixa do CMV	15	4	3360.00
+40	2026-03-22	Compra de mercadorias à vista	4	1	6000.00
+41	2026-03-23	Pagamento de tarifas bancárias	21	2	88.00
+42	2026-03-24	Venda de mercadorias à vista	1	13	3300.00
+43	2026-03-24	Baixa do CMV	15	4	1980.00
+44	2026-03-25	Pagamento de impostos (Simples Nacional)	9	2	2450.00
+45	2026-03-25	Venda de mercadorias à vista	1	13	3300.00
+46	2026-03-25	Baixa do CMV	15	4	1980.00
+47	2026-03-26	Adiantamento de aluguel	17	2	\N
+48	2026-03-27	Compra de mercadorias a prazo	4	7	9800.00
+49	2026-03-28	Venda de mercadorias a prazo	3	13	6100.00
+50	2026-03-28	Baixa do CMV	15	4	3660.00
+51	2026-03-29	Pagamento de salários	16	2	7500.00
+52	2026-03-30	Recebimento de cliente	2	3	5600.00
+53	2026-03-31	Despesas diversas do mês	23	1	150.00
+54	2026-04-01	Aporte de capital dos sócios	2	11	30000.00
+55	2026-04-02	Compra de mercadorias à vista	4	2	8000.00
+56	2026-04-03	Venda de mercadorias à vista	1	13	5000.00
+57	2026-04-03	Baixa do custo da mercadoria vendida	15	4	3000.00
+58	2026-04-05	Pagamento de aluguel do mês	17	2	1500.00
+59	2026-04-06	Compra de mercadorias a prazo	4	7	4000.00
+\.
+
+
+--
+-- TOC entry 5099 (class 0 OID 18237)
+-- Dependencies: 247
+-- Data for Name: pagamento; Type: TABLE DATA; Schema: contabil; Owner: postgres
+--
+
+COPY contabil.pagamento (id_pagamento, valor, forma_pagamento, data, id_servico_fk, id_pedido_fk) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5101 (class 0 OID 18278)
+-- Dependencies: 249
+-- Data for Name: plano_contas; Type: TABLE DATA; Schema: contabil; Owner: postgres
+--
+
+COPY contabil.plano_contas (id, codigo, nome_conta, tipo_conta, natureza_conta) FROM stdin;
+1	1.1.01	Caixa	ATIVO	DEVEDORA
+2	1.1.02	Bancos - Conta Movimento	ATIVO	DEVEDORA
+3	1.1.03	Clientes a Receber	ATIVO	DEVEDORA
+4	1.1.04	Estoque de Mercadorias	ATIVO	DEVEDORA
+5	1.2.01	Móveis e Utensílios	ATIVO	DEVEDORA
+6	1.2.02	Veículos	ATIVO	DEVEDORA
+7	2.1.01	Fornecedores a Pagar	PASSIVO	CREDORA
+8	2.1.02	Salários a Pagar	PASSIVO	CREDORA
+9	2.1.03	Impostos a Recolher	PASSIVO	CREDORA
+10	2.2.01	Empréstimos Bancários (LP)	PASSIVO	CREDORA
+11	3.1.01	Capital Social	PATRIMONIO_LIQUIDO	CREDORA
+12	3.1.02	Lucros/Prejuízos Acumulados	PATRIMONIO_LIQUIDO	CREDORA
+13	4.1.01	Receita de Vendas	RECEITA	CREDORA
+14	4.1.02	Receita de Serviços	RECEITA	CREDORA
+15	5.1.01	Custo das Mercadorias Vendidas	DESPESA	DEVEDORA
+16	5.1.02	Despesas com Salários	DESPESA	DEVEDORA
+17	5.1.03	Despesas com Aluguel	DESPESA	DEVEDORA
+18	5.1.04	Despesas com Energia Elétrica	DESPESA	DEVEDORA
+19	5.1.05	Despesas com Água	DESPESA	DEVEDORA
+20	5.1.06	Despesas com Telefone/Internet	DESPESA	DEVEDORA
+21	5.1.07	Despesas Bancárias/Tarifas	DESPESA	DEVEDORA
+22	5.1.08	Despesas com Combustível	DESPESA	DEVEDORA
+23	5.1.09	Despesas Diversas	DESPESA	DEVEDORA
+\.
+
+
+--
+-- TOC entry 5104 (class 0 OID 18322)
+-- Dependencies: 253
+-- Data for Name: saldo_contas; Type: TABLE DATA; Schema: contabil; Owner: postgres
+--
+
+COPY contabil.saldo_contas (conta_id, saldo, data_atualizacao) FROM stdin;
+3	0.00	2026-10-26 19:49:46.644645
+5	0.00	2026-10-26 19:49:46.644645
+6	0.00	2026-10-26 19:49:46.644645
+8	0.00	2026-10-26 19:49:46.644645
+9	0.00	2026-10-26 19:49:46.644645
+10	0.00	2026-10-26 19:49:46.644645
+12	0.00	2026-10-26 19:49:46.644645
+14	0.00	2026-10-26 19:49:46.644645
+16	0.00	2026-10-26 19:49:46.644645
+18	0.00	2026-10-26 19:49:46.644645
+19	0.00	2026-10-26 19:49:46.644645
+20	0.00	2026-10-26 19:49:46.644645
+21	0.00	2026-10-26 19:49:46.644645
+22	0.00	2026-10-26 19:49:46.644645
+23	0.00	2026-10-26 19:49:46.644645
+11	30000.00	2026-10-26 21:45:55.312148
+1	5000.00	2026-10-26 21:45:55.312148
+13	5000.00	2026-10-26 21:45:55.312148
+15	3000.00	2026-10-26 21:45:55.312148
+17	1500.00	2026-10-26 21:45:55.312148
+2	20500.00	2026-10-26 21:45:55.312148
+4	9000.00	2026-10-26 21:45:55.312148
+7	4000.00	2026-10-26 21:45:55.312148
+\.
+
+
+--
+-- TOC entry 5087 (class 0 OID 18078)
+-- Dependencies: 231
+-- Data for Name: carrinho; Type: TABLE DATA; Schema: site; Owner: postgres
+--
+
+COPY site.carrinho (id_carrinho, id_produto_fk, id_estoque_fk, id_cliente_fk) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5089 (class 0 OID 18099)
+-- Dependencies: 233
+-- Data for Name: pedido; Type: TABLE DATA; Schema: site; Owner: postgres
+--
+
+COPY site.pedido (id_pedido, status, id_carrinho_fk) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5083 (class 0 OID 18049)
+-- Dependencies: 227
+-- Data for Name: pet; Type: TABLE DATA; Schema: site; Owner: postgres
+--
+
+COPY site.pet (id_pet, nome, idade, peso, especie, raca, id_cliente_fk) FROM stdin;
+1	Maggie	6	7	Cachorro Femea	SRD	1
+2	Nina	8	15	Cachorro Femea	SRD	1
+3	Duke	0	3	Cachorro Macho	SRD	1
+4	Maggie	6	7	Cachorro Femea	SRD	1
+5	Nina	8	15	Cachorro Femea	SRD	1
+6	Duke	0	3	Cachorro Macho	SRD	1
+\.
+
+
+--
+-- TOC entry 5085 (class 0 OID 18066)
+-- Dependencies: 229
+-- Data for Name: produto; Type: TABLE DATA; Schema: site; Owner: postgres
+--
+
+COPY site.produto (id_produto, nome, tipo, variacao, valor) FROM stdin;
+1	Antipulgas Bravecto	Medicamento	Cães de 10 a 20kg	195,00
+2	Ração Sachê Gatos	Alimentação	Sabor Carne 85g	4.50
+3	Shampoo 6 em 1	Higiene	Frasco 500ml	38.90
+4	Coleira Antiparasitária	Acessório	Tamanho P	189.00
+5	Brinquedo Mordedor de Corda	Brinquedo	Tamanho G	29.90
+6	Vermifugo cães e Gatos	Medicamento	Frasco 20ml	22,00
+7	Areia Sanitária	Higiene	Pacote 3kg	45,90
+8	Arranhador de canto para gatos	acessório	Cor Marrom	79,90
+9	Petisco Bifinho de frango	alimentação	pacote 500g	6,80
+10	Ração premium cães adultos	Alimentação	pacote 15kg	249,90
+11	Antipulgas Bravecto	Medicamento	Cães de 10 a 20kg	195,00
+12	Ração Sachê Gatos	Alimentação	Sabor Carne 85g	4.50
+13	Shampoo 6 em 1	Higiene	Frasco 500ml	38.90
+14	Coleira Antiparasitária	Acessório	Tamanho P	189.00
+15	Brinquedo Mordedor de Corda	Brinquedo	Tamanho G	29.90
+16	Vermifugo cães e Gatos	Medicamento	Frasco 20ml	22,00
+17	Areia Sanitária	Higiene	Pacote 3kg	45,90
+18	Arranhador de canto para gatos	acessório	Cor Marrom	79,90
+19	Petisco Bifinho de frango	alimentação	pacote 500g	6,80
+20	Ração premium cães adultos	Alimentação	pacote 15kg	249,90
+\.
+
+
+--
+-- TOC entry 5091 (class 0 OID 18114)
+-- Dependencies: 235
+-- Data for Name: servico; Type: TABLE DATA; Schema: site; Owner: postgres
+--
+
+COPY site.servico (id_servico, tipo, valor, data, id_cliente_fk, id_pet_fk) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5081 (class 0 OID 18037)
+-- Dependencies: 225
+-- Data for Name: tutor_cliente; Type: TABLE DATA; Schema: site; Owner: postgres
+--
+
+COPY site.tutor_cliente (id_cliente, nome, cpf, telefone, endereco) FROM stdin;
+1	Mariana Alves	123.456.789-01	(32) 99911-2233	Rua das Flores, 120
+2	Carlos Mendes	234.567.890-12	(32) 99822-3344	Av. Astolfo Dutra, 450
+3	Fernanda Souza	345.678.901-23	(32) 99733-4455	Rua João XXIII, 85
+4	Lucas Ferreira	456.789.012-34	(32) 99644-5566	Rua Coronel Vieira, 210
+\.
+
+
+--
+-- TOC entry 5079 (class 0 OID 18026)
+-- Dependencies: 223
+-- Data for Name: usuarios; Type: TABLE DATA; Schema: site; Owner: postgres
+--
+
+COPY site.usuarios (id, nome, email, senha) FROM stdin;
+\.
+
+
+--
+-- TOC entry 5123 (class 0 OID 0)
+-- Dependencies: 240
+-- Name: estoque_id_estoque_seq; Type: SEQUENCE SET; Schema: adm; Owner: postgres
+--
+
+SELECT pg_catalog.setval('adm.estoque_id_estoque_seq', 1, false);
+
+
+--
+-- TOC entry 5124 (class 0 OID 0)
+-- Dependencies: 238
+-- Name: funcionarios_id_funcionario_seq; Type: SEQUENCE SET; Schema: adm; Owner: postgres
+--
+
+SELECT pg_catalog.setval('adm.funcionarios_id_funcionario_seq', 4, true);
+
+
+--
+-- TOC entry 5125 (class 0 OID 0)
+-- Dependencies: 242
+-- Name: historico_id_historico_seq; Type: SEQUENCE SET; Schema: adm; Owner: postgres
+--
+
+SELECT pg_catalog.setval('adm.historico_id_historico_seq', 1, false);
+
+
+--
+-- TOC entry 5126 (class 0 OID 0)
+-- Dependencies: 250
+-- Name: lancamentos_id_seq; Type: SEQUENCE SET; Schema: contabil; Owner: postgres
+--
+
+SELECT pg_catalog.setval('contabil.lancamentos_id_seq', 59, true);
+
+
+--
+-- TOC entry 5127 (class 0 OID 0)
+-- Dependencies: 246
+-- Name: pagamento_id_pagamento_seq; Type: SEQUENCE SET; Schema: contabil; Owner: postgres
+--
+
+SELECT pg_catalog.setval('contabil.pagamento_id_pagamento_seq', 1, false);
+
+
+--
+-- TOC entry 5128 (class 0 OID 0)
+-- Dependencies: 248
+-- Name: plano_contas_id_seq; Type: SEQUENCE SET; Schema: contabil; Owner: postgres
+--
+
+SELECT pg_catalog.setval('contabil.plano_contas_id_seq', 23, true);
+
+
+--
+-- TOC entry 5129 (class 0 OID 0)
+-- Dependencies: 230
+-- Name: carrinho_id_carrinho_seq; Type: SEQUENCE SET; Schema: site; Owner: postgres
+--
+
+SELECT pg_catalog.setval('site.carrinho_id_carrinho_seq', 1, false);
+
+
+--
+-- TOC entry 5130 (class 0 OID 0)
+-- Dependencies: 232
+-- Name: pedido_id_pedido_seq; Type: SEQUENCE SET; Schema: site; Owner: postgres
+--
+
+SELECT pg_catalog.setval('site.pedido_id_pedido_seq', 1, false);
+
+
+--
+-- TOC entry 5131 (class 0 OID 0)
+-- Dependencies: 226
+-- Name: pet_id_pet_seq; Type: SEQUENCE SET; Schema: site; Owner: postgres
+--
+
+SELECT pg_catalog.setval('site.pet_id_pet_seq', 6, true);
+
+
+--
+-- TOC entry 5132 (class 0 OID 0)
+-- Dependencies: 228
+-- Name: produto_id_produto_seq; Type: SEQUENCE SET; Schema: site; Owner: postgres
+--
+
+SELECT pg_catalog.setval('site.produto_id_produto_seq', 20, true);
+
+
+--
+-- TOC entry 5133 (class 0 OID 0)
+-- Dependencies: 234
+-- Name: servico_id_servico_seq; Type: SEQUENCE SET; Schema: site; Owner: postgres
+--
+
+SELECT pg_catalog.setval('site.servico_id_servico_seq', 1, false);
+
+
+--
+-- TOC entry 5134 (class 0 OID 0)
+-- Dependencies: 224
+-- Name: tutor_cliente_id_cliente_seq; Type: SEQUENCE SET; Schema: site; Owner: postgres
+--
+
+SELECT pg_catalog.setval('site.tutor_cliente_id_cliente_seq', 4, true);
+
+
+--
+-- TOC entry 5135 (class 0 OID 0)
+-- Dependencies: 222
+-- Name: usuarios_id_seq; Type: SEQUENCE SET; Schema: site; Owner: postgres
+--
+
+SELECT pg_catalog.setval('site.usuarios_id_seq', 1, false);
+
+
+--
+-- TOC entry 4895 (class 2606 OID 18169)
+-- Name: estoque estoque_pkey; Type: CONSTRAINT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.estoque
+    ADD CONSTRAINT estoque_pkey PRIMARY KEY (id_estoque);
+
+
+--
+-- TOC entry 4893 (class 2606 OID 18160)
+-- Name: funcionarios funcionarios_pkey; Type: CONSTRAINT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.funcionarios
+    ADD CONSTRAINT funcionarios_pkey PRIMARY KEY (id_funcionario);
+
+
+--
+-- TOC entry 4897 (class 2606 OID 18195)
+-- Name: historico historico_pkey; Type: CONSTRAINT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.historico
+    ADD CONSTRAINT historico_pkey PRIMARY KEY (id_historico);
+
+
+--
+-- TOC entry 4903 (class 2606 OID 18298)
+-- Name: lancamentos lancamentos_pkey; Type: CONSTRAINT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.lancamentos
+    ADD CONSTRAINT lancamentos_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4899 (class 2606 OID 18249)
+-- Name: pagamento pagamento_pkey; Type: CONSTRAINT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.pagamento
+    ADD CONSTRAINT pagamento_pkey PRIMARY KEY (id_pagamento);
+
+
+--
+-- TOC entry 4901 (class 2606 OID 18289)
+-- Name: plano_contas plano_contas_pkey; Type: CONSTRAINT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.plano_contas
+    ADD CONSTRAINT plano_contas_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4905 (class 2606 OID 18331)
+-- Name: saldo_contas saldo_contas_pkey; Type: CONSTRAINT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.saldo_contas
+    ADD CONSTRAINT saldo_contas_pkey PRIMARY KEY (conta_id);
+
+
+--
+-- TOC entry 4887 (class 2606 OID 18087)
+-- Name: carrinho carrinho_pkey; Type: CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.carrinho
+    ADD CONSTRAINT carrinho_pkey PRIMARY KEY (id_carrinho);
+
+
+--
+-- TOC entry 4889 (class 2606 OID 18107)
+-- Name: pedido pedido_pkey; Type: CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.pedido
+    ADD CONSTRAINT pedido_pkey PRIMARY KEY (id_pedido);
+
+
+--
+-- TOC entry 4883 (class 2606 OID 18059)
+-- Name: pet pet_pkey; Type: CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.pet
+    ADD CONSTRAINT pet_pkey PRIMARY KEY (id_pet);
+
+
+--
+-- TOC entry 4885 (class 2606 OID 18076)
+-- Name: produto produto_pkey; Type: CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.produto
+    ADD CONSTRAINT produto_pkey PRIMARY KEY (id_produto);
+
+
+--
+-- TOC entry 4891 (class 2606 OID 18126)
+-- Name: servico servico_pkey; Type: CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.servico
+    ADD CONSTRAINT servico_pkey PRIMARY KEY (id_servico);
+
+
+--
+-- TOC entry 4881 (class 2606 OID 18047)
+-- Name: tutor_cliente tutor_cliente_pkey; Type: CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.tutor_cliente
+    ADD CONSTRAINT tutor_cliente_pkey PRIMARY KEY (id_cliente);
+
+
+--
+-- TOC entry 4879 (class 2606 OID 18035)
+-- Name: usuarios usuarios_pkey; Type: CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.usuarios
+    ADD CONSTRAINT usuarios_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4925 (class 2620 OID 18338)
+-- Name: lancamentos trg_atualiza_saldo; Type: TRIGGER; Schema: contabil; Owner: postgres
+--
+
+CREATE TRIGGER trg_atualiza_saldo AFTER INSERT ON contabil.lancamentos FOR EACH ROW EXECUTE FUNCTION contabil.fn_atualiza_saldo();
+
+
+--
+-- TOC entry 4913 (class 2606 OID 18170)
+-- Name: estoque fk_estoque_produto; Type: FK CONSTRAINT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.estoque
+    ADD CONSTRAINT fk_estoque_produto FOREIGN KEY (id_produto_fk) REFERENCES site.produto(id_produto) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4914 (class 2606 OID 18201)
+-- Name: historico fk_historico_cliente; Type: FK CONSTRAINT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.historico
+    ADD CONSTRAINT fk_historico_cliente FOREIGN KEY (id_cliente_fk) REFERENCES site.tutor_cliente(id_cliente) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4915 (class 2606 OID 18221)
+-- Name: historico fk_historico_funcionario; Type: FK CONSTRAINT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.historico
+    ADD CONSTRAINT fk_historico_funcionario FOREIGN KEY (id_funcionario_fk) REFERENCES adm.funcionarios(id_funcionario) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4916 (class 2606 OID 18216)
+-- Name: historico fk_historico_pedido; Type: FK CONSTRAINT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.historico
+    ADD CONSTRAINT fk_historico_pedido FOREIGN KEY (id_pedido_fk) REFERENCES site.pedido(id_pedido) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4917 (class 2606 OID 18206)
+-- Name: historico fk_historico_pet; Type: FK CONSTRAINT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.historico
+    ADD CONSTRAINT fk_historico_pet FOREIGN KEY (id_pet_fk) REFERENCES site.pet(id_pet) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4918 (class 2606 OID 18211)
+-- Name: historico fk_historico_produto; Type: FK CONSTRAINT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.historico
+    ADD CONSTRAINT fk_historico_produto FOREIGN KEY (id_produto_fk) REFERENCES site.produto(id_produto) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4919 (class 2606 OID 18196)
+-- Name: historico fk_historico_servico; Type: FK CONSTRAINT; Schema: adm; Owner: postgres
+--
+
+ALTER TABLE ONLY adm.historico
+    ADD CONSTRAINT fk_historico_servico FOREIGN KEY (id_servico_fk) REFERENCES site.servico(id_servico) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4922 (class 2606 OID 18304)
+-- Name: lancamentos fk_conta_credito; Type: FK CONSTRAINT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.lancamentos
+    ADD CONSTRAINT fk_conta_credito FOREIGN KEY (conta_credito_id) REFERENCES contabil.plano_contas(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4923 (class 2606 OID 18299)
+-- Name: lancamentos fk_conta_debito; Type: FK CONSTRAINT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.lancamentos
+    ADD CONSTRAINT fk_conta_debito FOREIGN KEY (conta_debito_id) REFERENCES contabil.plano_contas(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4920 (class 2606 OID 18255)
+-- Name: pagamento fk_pagamento_pedido; Type: FK CONSTRAINT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.pagamento
+    ADD CONSTRAINT fk_pagamento_pedido FOREIGN KEY (id_pedido_fk) REFERENCES site.pedido(id_pedido) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4921 (class 2606 OID 18250)
+-- Name: pagamento fk_pagamento_servico; Type: FK CONSTRAINT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.pagamento
+    ADD CONSTRAINT fk_pagamento_servico FOREIGN KEY (id_servico_fk) REFERENCES site.servico(id_servico) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4924 (class 2606 OID 18332)
+-- Name: saldo_contas saldo_contas_conta_id_fkey; Type: FK CONSTRAINT; Schema: contabil; Owner: postgres
+--
+
+ALTER TABLE ONLY contabil.saldo_contas
+    ADD CONSTRAINT saldo_contas_conta_id_fkey FOREIGN KEY (conta_id) REFERENCES contabil.plano_contas(id);
+
+
+--
+-- TOC entry 4907 (class 2606 OID 18088)
+-- Name: carrinho fk_carrinho_cliente; Type: FK CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.carrinho
+    ADD CONSTRAINT fk_carrinho_cliente FOREIGN KEY (id_cliente_fk) REFERENCES site.tutor_cliente(id_cliente) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4908 (class 2606 OID 18175)
+-- Name: carrinho fk_carrinho_estoque; Type: FK CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.carrinho
+    ADD CONSTRAINT fk_carrinho_estoque FOREIGN KEY (id_estoque_fk) REFERENCES adm.estoque(id_estoque) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4909 (class 2606 OID 18093)
+-- Name: carrinho fk_carrinho_produto; Type: FK CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.carrinho
+    ADD CONSTRAINT fk_carrinho_produto FOREIGN KEY (id_produto_fk) REFERENCES site.produto(id_produto) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4910 (class 2606 OID 18108)
+-- Name: pedido fk_pedido_carrinho; Type: FK CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.pedido
+    ADD CONSTRAINT fk_pedido_carrinho FOREIGN KEY (id_carrinho_fk) REFERENCES site.carrinho(id_carrinho) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4906 (class 2606 OID 18060)
+-- Name: pet fk_pet_cliente; Type: FK CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.pet
+    ADD CONSTRAINT fk_pet_cliente FOREIGN KEY (id_cliente_fk) REFERENCES site.tutor_cliente(id_cliente) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4911 (class 2606 OID 18127)
+-- Name: servico fk_servico_cliente; Type: FK CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.servico
+    ADD CONSTRAINT fk_servico_cliente FOREIGN KEY (id_cliente_fk) REFERENCES site.tutor_cliente(id_cliente) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 4912 (class 2606 OID 18132)
+-- Name: servico fk_servico_pet; Type: FK CONSTRAINT; Schema: site; Owner: postgres
+--
+
+ALTER TABLE ONLY site.servico
+    ADD CONSTRAINT fk_servico_pet FOREIGN KEY (id_pet_fk) REFERENCES site.pet(id_pet) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+-- Completed on 2026-10-26 22:30:12
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict cniuSX4Pcbg6cVyOTt5v1nYzOe3RYhmDLdCxR0FgjZRAJHdpRHRrSAQsiggb9Qz
+
