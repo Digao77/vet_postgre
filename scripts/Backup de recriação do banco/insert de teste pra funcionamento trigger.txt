@@ -1,0 +1,21 @@
+1. Abrir o banco e mostrar os esquemas e a tabela contabil.lancamentos. Mostrar os saldos, inserir um lançamento de teste e consultar novamente os saldos para comprovar a atualização automática.
+
+INSERT INTO contabil.lancamentos
+    (data_lancamento, historico, conta_debito_id, conta_credito_id, valor)
+VALUES
+    (CURRENT_DATE, 'Demonstracao do trigger para a faculdade',
+     1, 7, 100.00);
+
+
+
+
+SELECT
+    pc.id,
+    pc.nome_conta,
+    pc.natureza_conta,
+    sc.saldo
+FROM contabil.plano_contas pc
+JOIN contabil.saldo_contas sc
+    ON sc.conta_id = pc.id
+WHERE pc.id IN (1, 7)
+ORDER BY pc.id;
