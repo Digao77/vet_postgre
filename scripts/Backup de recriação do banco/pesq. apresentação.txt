@@ -1,0 +1,63 @@
+Consulta 1 (Saldos com JOIN e filtro):
+
+SELECT 
+    p.codigo, 
+    p.nome_conta AS conta, 
+    p.natureza_conta AS natureza, 
+    COALESCE(s.saldo, 0.00) AS saldo
+FROM contabil.plano_contas p
+LEFT JOIN contabil.saldo_contas s ON p.id = s.conta_id
+WHERE s.saldo > 0 OR s.saldo < 0
+ORDER BY p.codigo;
+
+
+Consulta 2 (Lançamentos de abril):
+
+SELECT
+    id,
+    data_lancamento,
+    historico,
+    conta_debito_id,
+    conta_credito_id,
+    valor
+FROM contabil.lancamentos
+WHERE data_lancamento >= DATE '2026-04-01'
+  AND data_lancamento <  DATE '2026-05-01'
+ORDER BY data_lancamento, id;
+
+
+Consulta 3 (Visão geral de saldos cadastrados):
+
+SELECT
+    pc.id,
+    pc.nome_conta,
+    pc.natureza_conta,
+    sc.saldo,
+    sc.data_atualizacao
+FROM contabil.plano_contas AS pc
+JOIN contabil.saldo_contas AS sc
+    ON sc.conta_id = pc.id
+ORDER BY pc.natureza_conta, pc.id;
+
+
+
+Consulta 4 (Soma agrupada por natureza):
+
+SELECT
+    pc.natureza_conta,
+    SUM(sc.saldo) AS saldo_total
+FROM contabil.plano_contas AS pc
+JOIN contabil.saldo_contas AS sc
+    ON sc.conta_id = pc.id
+GROUP BY pc.natureza_conta
+ORDER BY pc.natureza_conta;
+
+
+Consulta 5 (Plano de contas puro):
+
+SELECT
+    id,
+    nome_conta,
+    natureza_conta
+FROM contabil.plano_contas
+ORDER BY id;

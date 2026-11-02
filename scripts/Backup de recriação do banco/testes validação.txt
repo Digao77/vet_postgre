@@ -1,0 +1,65 @@
+-- =========================================================
+-- 1. MOSTRAR OS LANCAMENTOS DE ABRIL
+-- =========================================================
+-- Ajuste o ano se a pratica usar outro ano.
+-- Esta consulta considera abril de 2026 e exibe os lancamentos
+-- registrados nesse mes. Confira os nomes das colunas caso a
+-- tabela da pratica tenha uma estrutura diferente.
+
+SELECT
+    id,
+    data_lancamento,
+    historico,
+    conta_debito_id,
+    conta_credito_id,
+    valor
+FROM contabil.lancamentos
+WHERE data_lancamento >= DATE '2026-04-01'
+  AND data_lancamento <  DATE '2026-05-01'
+ORDER BY data_lancamento, id;
+
+
+-- =========================================================
+-- 2. MOSTRAR OS SALDOS DAS CONTAS
+-- =========================================================
+-- Relaciona o plano de contas aos saldos armazenados.
+-- Exibe uma linha por conta que possua registro de saldo.
+
+SELECT
+    pc.id,
+    pc.nome_conta,
+    pc.natureza_conta,
+    sc.saldo,
+    sc.data_atualizacao
+FROM contabil.plano_contas AS pc
+JOIN contabil.saldo_contas AS sc
+    ON sc.conta_id = pc.id
+ORDER BY pc.natureza_conta, pc.id;
+
+
+-- =========================================================
+-- 3. SOMAR OS SALDOS POR NATUREZA
+-- =========================================================
+-- O JOIN relaciona cada conta ao saldo.
+-- SUM soma os saldos e GROUP BY separa os totais por natureza.
+
+SELECT
+    pc.natureza_conta,
+    SUM(sc.saldo) AS saldo_total
+FROM contabil.plano_contas AS pc
+JOIN contabil.saldo_contas AS sc
+    ON sc.conta_id = pc.id
+GROUP BY pc.natureza_conta
+ORDER BY pc.natureza_conta;
+
+
+-- =========================================================
+-- 4. OPCIONAL: CONFERIR AS CONTAS DO PLANO DE CONTAS
+-- =========================================================
+
+SELECT
+    id,
+    nome_conta,
+    natureza_conta
+FROM contabil.plano_contas
+ORDER BY id;

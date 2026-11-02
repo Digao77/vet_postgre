@@ -1,1 +1,3 @@
 \i 'C:/Users/(usuario)/Desktop/melhor_amigo_2026-10-26.backup'
+
+**utilize o psql próprio do pgadmin
